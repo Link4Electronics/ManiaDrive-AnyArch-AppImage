@@ -10,7 +10,7 @@ export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}
 export ICON=https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/icon.png
 
 # Deploy dependencies
-quick-sharun ./AppDir/bin
+quick-sharun ./AppDir/bin/*
 
 # Additional changes can be done in between here
 
