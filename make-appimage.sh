@@ -9,6 +9,7 @@ export OUTPATH=./dist
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
 export DESKTOP=https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/maniadrive.desktop
 export ICON=https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/icon.png
+export DEPLOY_OPENGL=1
 
 # Deploy dependencies
 quick-sharun ./AppDir/bin/*
