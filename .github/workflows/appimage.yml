@@ -26,10 +26,8 @@ jobs:
             platform: linux/amd64
             image: ghcr.io/pkgforge-dev/archlinux:latest
           - arch: aarch64
-            platform: linux/arm64
             image: danhunsaker/archlinuxarm:latest
           - arch: arm32v7
-            platform: linux/arm/v7
             image: danhunsaker/archlinuxarm:latest
           - arch: ppc64
             platform: linux/ppc64
@@ -38,7 +36,6 @@ jobs:
             platform: linux/ppc64le
             image: kth5/archpower:latest-ppc64le
           - arch: pentium4
-            platform: linux/386
             image: jonathonf/archlinux32:pentium4
     steps:
       - name: Set up QEMU
@@ -53,7 +50,7 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e GITHUB_REPOSITORY="${{ github.repository }}" \
-            --platform ${{ matrix.platform }} \
+            ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
             ${{ matrix.image }} \
             sh -c "
               pacman-key --init 2>/dev/null || true
