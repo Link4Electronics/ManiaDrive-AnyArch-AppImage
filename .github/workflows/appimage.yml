@@ -83,17 +83,21 @@ jobs:
                     '' '[extrappc]' 'SigLevel = Never' \
                     'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/\$arch' \
                     >> /etc/pacman.conf
-                  # Image has newer packages than repo; avoid downgrading C/C++ runtime
+                  # Avoid downgrading runtime libs; keep image's gcc 16.1
                   PACMAN_IGNORE='--ignore glibc,libgcc,libstdc++,gcc-libs,libasan,liblsan,libubsan,libtsan,zlib,curl,libxml2,openssl,nettle'
                   pacman-key --init 2>/dev/null || true
                   pacman -S --noconfirm archpower-keyring 2>/dev/null || true
                   pacman -Sy --noconfirm 2>/dev/null || true
-                  # Skip -Su for ppc64: post-transaction hooks hang under QEMU,
-                  # and image packages are already newer than repo
                   SKIP_UPGRADE=1
+                  pkgs='git jq patchelf wget zsync unzip 7zip \
+                    freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
+                    pulseaudio pulseaudio-alsa xorg-server-xvfb'
                   ;;
                 *)
                   pacman-key --init 2>/dev/null || true
+                  pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
+                    freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
+                    pulseaudio pulseaudio-alsa xorg-server-xvfb'
                   ;;
               esac
               if [ -z \"\${SKIP_UPGRADE:-}\" ]; then
@@ -101,9 +105,6 @@ jobs:
                 pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
                 pacman -Su --noconfirm 2>/dev/null || true
               fi
-              pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
-                freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
-                pulseaudio pulseaudio-alsa xorg-server-xvfb'
               if ! pacman -S --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null; then
                 echo 'Normal install failed under QEMU, trying download+extract...'
                 pacman -Sw --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null || true
