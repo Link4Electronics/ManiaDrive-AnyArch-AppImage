@@ -20,7 +20,7 @@ jobs:
           - arm32v7
           - ppc64
           #- ppc64le
-          - pentium4
+          #- pentium4
         include:
           - arch: x86_64
             platform: linux/amd64
@@ -44,7 +44,7 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Install QEMU for ppc64 (big-endian)
+      - name: Register QEMU binfmt (ppc64 only)
         if: matrix.arch == 'ppc64'
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -86,6 +86,7 @@ jobs:
                   # Image has newer packages than repo; avoid downgrading C/C++ runtime
                   PACMAN_IGNORE='--ignore glibc,libgcc,libstdc++,gcc-libs,libasan,liblsan,libubsan,libtsan,zlib,curl,libxml2,openssl,nettle'
                   pacman-key --init 2>/dev/null || true
+                  pacman -S --noconfirm archpower-keyring 2>/dev/null || true
                   ;;
                 *)
                   pacman-key --init 2>/dev/null || true
