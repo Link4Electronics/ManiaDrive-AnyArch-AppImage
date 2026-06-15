@@ -10,7 +10,9 @@
 [![arm32v7](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-arm32v7.AppImage?label=arm32v7&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
 [![ppc64](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-ppc64.AppImage?label=ppc64&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
 [![ppc64le](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-ppc64le.AppImage?label=ppc64le&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
-[![pentium4 32bit](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-pentium4.AppImage?label=pentium4&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![x86 32-bit](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-pentium4.AppImage?label=x86+32-bit&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![loongarch64](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-loongarch64.AppImage?label=loongarch64&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![s390x](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-s390x.AppImage?label=s390x&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/icon.png" width="128" />
