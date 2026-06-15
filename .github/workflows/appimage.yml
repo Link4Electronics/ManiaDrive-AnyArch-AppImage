@@ -106,6 +106,9 @@ jobs:
                 pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
                 pacman -Su --noconfirm 2>/dev/null || true
               fi
+              # Add curl to main pkgs so it downgrades in the first transaction
+              # alongside deps, avoiding a hung second transaction under QEMU.
+              pkgs=\"\$pkgs curl\"
               if ! pacman -S --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null; then
                 echo 'Normal install failed under QEMU, trying download+extract...'
                 pacman -Sw --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null || true
@@ -113,8 +116,6 @@ jobs:
                   [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
                 done
               fi
-              # Reinstall network tools to fix library mismatches from package changes
-              pacman -S --noconfirm \$PACMAN_IGNORE wget curl 2>/dev/null || true
               # Download quick-sharun (try each method independently)
               if command -v busybox >/dev/null 2>&1; then
                 busybox wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
