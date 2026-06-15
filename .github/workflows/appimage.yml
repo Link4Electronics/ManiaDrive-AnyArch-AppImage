@@ -38,8 +38,8 @@ jobs:
           #- arch: ppc64le
           #  platform: linux/ppc64le
           #  image: kth5/archpower:latest-ppc64le
-          - arch: pentium4
-            image: jonathonf/archlinux32:pentium4
+          #- arch: pentium4
+          #  image: jonathonf/archlinux32:pentium4
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
