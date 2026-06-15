@@ -72,7 +72,7 @@ jobs:
               fi
               sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf 2>/dev/null || true
               # Force fresh pentium4 mirror for old images
-              case "\$(uname -m)" in i686|pentium4)
+              case \"\$(uname -m)\" in i686|pentium4)
                 echo 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' > /etc/pacman.d/mirrorlist
                 sed -i 's/^CFLAGS=.*/CFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
                 sed -i 's/^CXXFLAGS=.*/CXXFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
