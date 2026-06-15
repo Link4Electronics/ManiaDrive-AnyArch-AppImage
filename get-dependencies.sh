@@ -5,7 +5,7 @@ set -eu
 ARCH=$(uname -m)
 
 case "$ARCH" in
-	x86_64|aarch64|armv7h|powerpc64|ppc64|powerpc|ppc|powerpc64le|ppc64le|riscv|pentium4|i686)
+	x86_64|aarch64|armv7h|armv7l|powerpc64|ppc64|powerpc|ppc|powerpc64le|ppc64le|riscv|pentium4|i686)
 		echo "Installing Arch package dependencies..."
 		echo "---------------------------------------------------------------"
 		pacman -Syu --noconfirm git base-devel cmake mesa glu glew openal freealut libjpeg-turbo libpng zlib curl libxml2 libvorbis libogg libx11 libxinerama v4l-utils bison
