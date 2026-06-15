@@ -33,4 +33,5 @@ cd ManiaDrive
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
-mv -v level_editor mania_drive libraydium.so ode-build/libode.so.0.16.5 php-build/libs/libphp5.so ../*.php ../../AppDir/bin
+mv -v level_editor mania_drive ../*.php ../../AppDir/bin
+mv -v libraydium.so ode-build/libode.so.0.16.5 php-build/libs/libphp5.so /usr/lib
