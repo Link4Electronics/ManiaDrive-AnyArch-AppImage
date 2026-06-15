@@ -58,27 +58,26 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            -e MATRIX_ARCH="${{ matrix.arch }}" \
             ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
             ${{ matrix.entrypoint && format('--entrypoint {0}', matrix.entrypoint) || '' }} \
             ${{ matrix.image }} \
             ${{ matrix.entrypoint && '-c' || 'sh -c' }} "
-              pacman-key --init 2>/dev/null || true
-              pacman -Sy --noconfirm 2>/dev/null || true
-              pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
-              pacman -Su --noconfirm 2>/dev/null || true
               # Disable pacman sandbox (Landlock unavailable under QEMU)
-              if ! grep -q '^DisableSandbox' /etc/pacman.conf 2>/dev/null; then
+              sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf 2>/dev/null || \
                 echo 'DisableSandbox' >> /etc/pacman.conf
-              fi
               sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf 2>/dev/null || true
-              # Per-arch tuning
-              case \"\$(uname -m)\" in
-                i686|pentium4)
-                  echo 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' > /etc/pacman.d/mirrorlist
+              # Per-arch tuning (use MATRIX_ARCH since uname -m may lie under QEMU)
+              case \"\$MATRIX_ARCH\" in
+                pentium4)
+                  printf '%s\n' 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' \
+                    'SigLevel = Never' > /etc/pacman.d/mirrorlist
                   sed -i 's/^CFLAGS=.*/CFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
                   sed -i 's/^CXXFLAGS=.*/CXXFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
+                  pacman-key --init 2>/dev/null || true
+                  pacman-key --populate archlinux32 2>/dev/null || true
                   ;;
-                powerpc|ppc|powerpc64|ppc64|powerpc64le|ppc64le)
+                ppc64)
                   printf '%s\n' '[extrappc-any]' 'SigLevel = Never' \
                     'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/any' \
                     '' '[extrappc]' 'SigLevel = Never' \
@@ -86,8 +85,15 @@ jobs:
                     >> /etc/pacman.conf
                   # Image has newer packages than repo; avoid downgrading C/C++ runtime
                   PACMAN_IGNORE='--ignore glibc,gcc,libgcc,libstdc++,gcc-libs,libasan,liblsan,libubsan,libtsan,zlib,curl,libxml2,openssl,nettle'
+                  pacman-key --init 2>/dev/null || true
+                  ;;
+                *)
+                  pacman-key --init 2>/dev/null || true
                   ;;
               esac
+              pacman -Sy --noconfirm 2>/dev/null || true
+              pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
+              pacman -Su --noconfirm 2>/dev/null || true
               pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
                 freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
                 pulseaudio pulseaudio-alsa xorg-server-xvfb'
