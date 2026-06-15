@@ -19,7 +19,7 @@ jobs:
           - aarch64
           - arm32v7
           - ppc64
-          - ppc64le
+          #- ppc64le
           - pentium4
         include:
           - arch: x86_64
@@ -35,9 +35,9 @@ jobs:
             platform: linux/ppc64
             image: kth5/archpower:latest-ppc64
             entrypoint: /bin/sh
-          - arch: ppc64le
-            platform: linux/ppc64le
-            image: kth5/archpower:latest-ppc64le
+          #- arch: ppc64le
+          #  platform: linux/ppc64le
+          #  image: kth5/archpower:latest-ppc64le
           - arch: pentium4
             image: jonathonf/archlinux32:pentium4
     steps:
@@ -71,11 +71,20 @@ jobs:
                 echo 'DisableSandbox' >> /etc/pacman.conf
               fi
               sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf 2>/dev/null || true
-              # Force fresh pentium4 mirror for old images
-              case \"\$(uname -m)\" in i686|pentium4)
-                echo 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' > /etc/pacman.d/mirrorlist
-                sed -i 's/^CFLAGS=.*/CFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
-                sed -i 's/^CXXFLAGS=.*/CXXFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
+              # Per-arch tuning
+              case \"\$(uname -m)\" in
+                i686|pentium4)
+                  echo 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' > /etc/pacman.d/mirrorlist
+                  sed -i 's/^CFLAGS=.*/CFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
+                  sed -i 's/^CXXFLAGS=.*/CXXFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
+                  ;;
+                powerpc|ppc|powerpc64|ppc64|powerpc64le|ppc64le)
+                  printf '%s\n' '[extrappc-any]' 'SigLevel = Never' \
+                    'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/any' \
+                    '' '[extrappc]' 'SigLevel = Never' \
+                    'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/\$arch' \
+                    >> /etc/pacman.conf
+                  ;;
               esac
               pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
                 freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
@@ -87,13 +96,20 @@ jobs:
                   [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
                 done
               fi
-              # Try wget first, fall back to curl, then busybox wget
-              if command -v wget >/dev/null 2>&1; then
-                wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
-                  -O /usr/local/bin/quick-sharun || true
-              elif command -v curl >/dev/null 2>&1; then
+              # Reinstall network tools to fix library mismatches from package changes
+              pacman -S --noconfirm wget curl 2>/dev/null || true
+              # Download quick-sharun (try each method independently)
+              if command -v busybox >/dev/null 2>&1; then
+                busybox wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                  -O /usr/local/bin/quick-sharun 2>/dev/null || true
+              fi
+              if [ ! -s /usr/local/bin/quick-sharun ] && command -v curl >/dev/null 2>&1; then
                 curl -sLo /usr/local/bin/quick-sharun \
                   'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' || true
+              fi
+              if [ ! -s /usr/local/bin/quick-sharun ] && command -v wget >/dev/null 2>&1; then
+                wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                  -O /usr/local/bin/quick-sharun || true
               fi
               chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
               echo Architecture: \$(uname -m)
