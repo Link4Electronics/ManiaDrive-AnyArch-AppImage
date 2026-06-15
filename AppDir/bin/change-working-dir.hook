@@ -1,0 +1,4 @@
+#!/bin/sh
+dir=$HOME/.mania_drive
+mkdir -p "$dir"
+cd "$dir"
