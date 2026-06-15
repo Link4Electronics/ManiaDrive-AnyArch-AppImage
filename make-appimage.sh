@@ -7,6 +7,7 @@ VERSION=1.3custom
 export ARCH VERSION
 export OUTPATH=./dist
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
+export DESKTOP=https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/maniadrive.desktop
 export ICON=https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/icon.png
 
 # Deploy dependencies
