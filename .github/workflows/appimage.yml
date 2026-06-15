@@ -26,12 +26,15 @@ jobs:
             platform: linux/amd64
             image: ghcr.io/pkgforge-dev/archlinux:latest
           - arch: aarch64
+            platform: linux/arm64
             image: danhunsaker/archlinuxarm:latest
           - arch: arm32v7
+            platform: linux/arm/v7
             image: danhunsaker/archlinuxarm:latest
           - arch: ppc64
             platform: linux/ppc64
             image: kth5/archpower:latest-ppc64
+            entrypoint: /bin/sh
           - arch: ppc64le
             platform: linux/ppc64le
             image: kth5/archpower:latest-ppc64le
@@ -40,6 +43,11 @@ jobs:
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
+      - name: Install QEMU for ppc64
+        if: matrix.arch == 'ppc64'
+        run: |
+          sudo apt update && sudo apt install -y qemu-user-static binfmt-support
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +59,7 @@ jobs:
             -w /workspace \
             -e GITHUB_REPOSITORY="${{ github.repository }}" \
             ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
+            ${{ matrix.entrypoint && format('--entrypoint {0}', matrix.entrypoint) || '' }} \
             ${{ matrix.image }} \
             sh -c "
               pacman-key --init 2>/dev/null || true
