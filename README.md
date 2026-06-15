@@ -1,16 +1,16 @@
 <div align="center">
 
-# TEMPLATE-AnyArch-AppImage 🐧
+# ManiaDrive-AnyArch-AppImage 🐧
 
-[![Total Downloads](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/total?logo=github&label=Total)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
-[![Latest Stable Release](https://img.shields.io/github/v/release/Link4Electronics/TEMPLATE-AnyArch-AppImage)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
+[![Total Downloads](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/total?logo=github&label=Total)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![Latest Stable Release](https://img.shields.io/github/v/release/Link4Electronics/ManiaDrive-AnyArch-AppImage)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
 
-[![x86_64](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/latest/APPNAME-x86_64.AppImage?label=x86_64&logo=github)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
-[![aarch64](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/latest/APPNAME-aarch64.AppImage?label=aarch64&logo=github)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
-[![arm32v7](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/latest/APPNAME-arm32v7.AppImage?label=arm32v7&logo=github)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
-[![ppc64](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/latest/APPNAME-ppc64.AppImage?label=ppc64&logo=github)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
-[![ppc64le](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/latest/APPNAME-ppc64le.AppImage?label=ppc64le&logo=github)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
-[![pentium4 32bit](https://img.shields.io/github/downloads/Link4Electronics/TEMPLATE-AnyArch-AppImage/latest/APPNAME-pentium4.AppImage?label=pentium4&logo=github)](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest)
+[![x86_64](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-x86_64.AppImage?label=x86_64&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![aarch64](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-aarch64.AppImage?label=aarch64&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![arm32v7](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-arm32v7.AppImage?label=arm32v7&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![ppc64](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-ppc64.AppImage?label=ppc64&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![ppc64le](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-ppc64le.AppImage?label=ppc64le&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
+[![pentium4 32bit](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-pentium4.AppImage?label=pentium4&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
 
 <p align="center">
   <img src="https://github.com/Link4Electronics.png" width="128" />
@@ -19,7 +19,7 @@
 
 | Latest Stable Release | Upstream URL |
 | :---: | :---: |
-| [Click here](https://github.com/Link4Electronics/TEMPLATE-AnyArch-AppImage/releases/latest) | [Click here](https://github.com/Link4Electronics/Anylinux-AppImages) |
+| [Click here](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest) | [Click here](https://github.com/Link4Electronics/ManiaDrive) |
 
 </div>
 
