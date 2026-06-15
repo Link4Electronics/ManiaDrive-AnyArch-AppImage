@@ -115,18 +115,19 @@ jobs:
                 for pkg in /var/cache/pacman/pkg/*.pkg.tar.*; do
                   [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
                 done
+                ldconfig 2>/dev/null || true
               fi
               # Download quick-sharun (try each method independently)
               if command -v busybox >/dev/null 2>&1; then
-                busybox wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                busybox wget -q 'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' \
                   -O /usr/local/bin/quick-sharun 2>/dev/null || true
               fi
               if [ ! -s /usr/local/bin/quick-sharun ] && command -v curl >/dev/null 2>&1; then
                 curl -sLo /usr/local/bin/quick-sharun \
-                  'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' || true
+                  'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' || true
               fi
               if [ ! -s /usr/local/bin/quick-sharun ] && command -v wget >/dev/null 2>&1; then
-                wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                wget -q 'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' \
                   -O /usr/local/bin/quick-sharun || true
               fi
               chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
