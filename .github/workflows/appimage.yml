@@ -84,7 +84,7 @@ jobs:
                     'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/\$arch' \
                     >> /etc/pacman.conf
                   # Image has newer packages than repo; avoid downgrading C/C++ runtime
-                  PACMAN_IGNORE='--ignore glibc,gcc,libgcc,libstdc++,gcc-libs,libasan,liblsan,libubsan,libtsan,zlib,curl,libxml2,openssl,nettle'
+                  PACMAN_IGNORE='--ignore glibc,libgcc,libstdc++,gcc-libs,libasan,liblsan,libubsan,libtsan,zlib,curl,libxml2,openssl,nettle'
                   pacman-key --init 2>/dev/null || true
                   ;;
                 *)
@@ -105,7 +105,7 @@ jobs:
                 done
               fi
               # Reinstall network tools to fix library mismatches from package changes
-              pacman -S --noconfirm wget curl 2>/dev/null || true
+              pacman -S --noconfirm \$PACMAN_IGNORE wget curl 2>/dev/null || true
               # Download quick-sharun (try each method independently)
               if command -v busybox >/dev/null 2>&1; then
                 busybox wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
