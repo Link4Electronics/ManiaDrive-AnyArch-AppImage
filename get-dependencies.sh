@@ -33,3 +33,4 @@ cd ManiaDrive
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
+mv -v level_editor mania_drive libraydium.so ../*.php ../../AppDir/bin
