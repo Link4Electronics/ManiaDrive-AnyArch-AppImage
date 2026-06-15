@@ -13,7 +13,7 @@
 [![pentium4 32bit](https://img.shields.io/github/downloads/Link4Electronics/ManiaDrive-AnyArch-AppImage/latest/APPNAME-pentium4.AppImage?label=pentium4&logo=github)](https://github.com/Link4Electronics/ManiaDrive-AnyArch-AppImage/releases/latest)
 
 <p align="center">
-  <img src="https://github.com/Link4Electronics.png" width="128" />
+  <img src="https://raw.githubusercontent.com/Link4Electronics/ManiaDrive/refs/heads/main/debian/icon.png" width="128" />
 </p>
 
 
