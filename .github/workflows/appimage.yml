@@ -66,6 +66,9 @@ jobs:
               pacman -Sy --noconfirm 2>/dev/null || true
               pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
               pacman -Su --noconfirm 2>/dev/null || true
+              # Disable pacman sandbox (Landlock unavailable under QEMU)
+              sed -i 's/^#DisableSandbox/DisableSandbox/' /etc/pacman.conf 2>/dev/null || true
+              sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf 2>/dev/null || true
               pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
                 freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
                 pulseaudio pulseaudio-alsa xorg-server-xvfb'
@@ -76,9 +79,16 @@ jobs:
                   [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
                 done
               fi
-              wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
-                -O /usr/local/bin/quick-sharun 2>/dev/null || true
+              # Try wget first, fall back to curl, then busybox wget
+              if command -v wget >/dev/null 2>&1; then
+                wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                  -O /usr/local/bin/quick-sharun || true
+              elif command -v curl >/dev/null 2>&1; then
+                curl -sLo /usr/local/bin/quick-sharun \
+                  'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' || true
+              fi
               chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              echo Architecture: \$(uname -m)
               /bin/sh ./get-dependencies.sh
               /bin/sh ./make-appimage.sh
             "
