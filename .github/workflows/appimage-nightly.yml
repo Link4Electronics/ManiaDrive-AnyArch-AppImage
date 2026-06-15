@@ -1,0 +1,106 @@
+name: AnyArch-AppImage (Nightly)
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+on:
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# comment these two out to enable nightly builds, This sets the variable DEVEL_RELEASE=1 for  #
+# get-dependencies.sh to make a nightly release, this will make a release with 'nightly' tag  #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#  schedule:
+#    - cron: "0 5 1/2 * *"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: "${{ matrix.arch }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+          - aarch64
+          - arm32v7
+          - ppc64
+          - ppc64le
+          - pentium4
+        include:
+          - arch: x86_64
+            platform: linux/amd64
+            image: ghcr.io/pkgforge-dev/archlinux:latest
+          - arch: aarch64
+            platform: linux/arm64
+            image: danhunsaker/archlinuxarm:latest
+          - arch: arm32v7
+            platform: linux/arm/v7
+            image: danhunsaker/archlinuxarm:latest
+          - arch: ppc64
+            platform: linux/ppc64
+            image: kth5/archpower:latest-ppc64
+          - arch: ppc64le
+            platform: linux/ppc64le
+            image: kth5/archpower:latest-ppc64le
+          - arch: pentium4
+            platform: linux/386
+            image: jonathonf/archlinux32:pentium4
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build in container
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            -e DEVEL_RELEASE=1 \
+            --platform ${{ matrix.platform }} \
+            ${{ matrix.image }} \
+            sh -c "
+              pacman-key --init 2>/dev/null || true
+              pacman -Sy --noconfirm 2>/dev/null || true
+              pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
+              pacman -Su --noconfirm 2>/dev/null || true
+              pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
+                freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
+                pulseaudio pulseaudio-alsa xorg-server-xvfb'
+              if ! pacman -S --noconfirm \$pkgs 2>/dev/null; then
+                echo 'Normal install failed under QEMU, trying download+extract...'
+                pacman -Sw --noconfirm \$pkgs 2>/dev/null || true
+                for pkg in /var/cache/pacman/pkg/*.pkg.tar.*; do
+                  [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
+                done
+              fi
+              wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                -O /usr/local/bin/quick-sharun 2>/dev/null || true
+              chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              /bin/sh ./get-dependencies.sh
+              /bin/sh ./make-appimage.sh
+            "
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppImage-${{ matrix.arch }}
+          path: dist
+          if-no-files-found: warn
+
+  release:
+    if: ${{ github.ref_name == 'main' }}
+    needs: [build]
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AppImage-*
+          merge-multiple: true
+        continue-on-error: true
+      - name: Release Nightly AppImage
+        uses: pkgforge-dev/make-nightly-appimage-release@17cbe90fc0796286e424619a54a82a3a880efe4c # v1.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

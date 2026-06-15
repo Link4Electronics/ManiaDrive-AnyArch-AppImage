@@ -1,0 +1,120 @@
+name: AnyArch-AppImage
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  schedule:
+    - cron: "0 7 1/21 * *"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: "${{ matrix.arch }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+          - aarch64
+          - arm32v7
+          - ppc64
+          - ppc64le
+          - pentium4
+        include:
+          - arch: x86_64
+            platform: linux/amd64
+            image: ghcr.io/pkgforge-dev/archlinux:latest
+          - arch: aarch64
+            platform: linux/arm64
+            image: danhunsaker/archlinuxarm:latest
+          - arch: arm32v7
+            platform: linux/arm/v7
+            image: danhunsaker/archlinuxarm:latest
+          - arch: ppc64
+            platform: linux/ppc64
+            image: kth5/archpower:latest-ppc64
+          - arch: ppc64le
+            platform: linux/ppc64le
+            image: kth5/archpower:latest-ppc64le
+          - arch: pentium4
+            platform: linux/386
+            image: jonathonf/archlinux32:pentium4
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build in container
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            --platform ${{ matrix.platform }} \
+            ${{ matrix.image }} \
+            sh -c "
+              pacman-key --init 2>/dev/null || true
+              pacman -Sy --noconfirm 2>/dev/null || true
+              pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
+              pacman -Su --noconfirm 2>/dev/null || true
+              pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
+                freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
+                pulseaudio pulseaudio-alsa xorg-server-xvfb'
+              if ! pacman -S --noconfirm \$pkgs 2>/dev/null; then
+                echo 'Normal install failed under QEMU, trying download+extract...'
+                pacman -Sw --noconfirm \$pkgs 2>/dev/null || true
+                for pkg in /var/cache/pacman/pkg/*.pkg.tar.*; do
+                  [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
+                done
+              fi
+              wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                -O /usr/local/bin/quick-sharun 2>/dev/null || true
+              chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              /bin/sh ./get-dependencies.sh
+              /bin/sh ./make-appimage.sh
+            "
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppImage-${{ matrix.arch }}
+          path: dist
+          if-no-files-found: warn
+
+  release:
+    if: ${{ github.ref_name == 'main' }}
+    needs: [build]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/artifacts
+          pattern: AppImage-*
+          merge-multiple: true
+
+      - name: Collect files
+        run: find /tmp/artifacts -type f -exec cp -v {} . \;
+
+      - name: Release (tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release (manual/schedule)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*'
+          tag_name: ${{ github.sha }}
+          name: Build ${{ github.sha }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
