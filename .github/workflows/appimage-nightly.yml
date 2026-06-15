@@ -23,8 +23,8 @@ jobs:
           - aarch64
           - arm32v7
           - ppc64
-          - ppc64le
-          - pentium4
+          #- ppc64le
+          #- pentium4
         include:
           - arch: x86_64
             platform: linux/amd64
@@ -38,15 +38,20 @@ jobs:
           - arch: ppc64
             platform: linux/ppc64
             image: kth5/archpower:latest-ppc64
-          - arch: ppc64le
-            platform: linux/ppc64le
-            image: kth5/archpower:latest-ppc64le
-          - arch: pentium4
-            platform: linux/386
-            image: jonathonf/archlinux32:pentium4
+            entrypoint: /bin/sh
+          #- arch: ppc64le
+          #  platform: linux/ppc64le
+          #  image: kth5/archpower:latest-ppc64le
+          #- arch: pentium4
+          #  image: jonathonf/archlinux32:pentium4
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
+      - name: Register QEMU binfmt (ppc64 only)
+        if: matrix.arch == 'ppc64'
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,26 +63,70 @@ jobs:
             -w /workspace \
             -e GITHUB_REPOSITORY="${{ github.repository }}" \
             -e DEVEL_RELEASE=1 \
-            --platform ${{ matrix.platform }} \
+            -e MATRIX_ARCH="${{ matrix.arch }}" \
+            ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
+            ${{ matrix.entrypoint && format('--entrypoint {0}', matrix.entrypoint) || '' }} \
             ${{ matrix.image }} \
-            sh -c "
-              pacman-key --init 2>/dev/null || true
+            ${{ matrix.entrypoint && '-c' || 'sh -c' }} "
+              # Disable pacman sandbox (Landlock unavailable under QEMU)
+              sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf 2>/dev/null || \
+                echo 'DisableSandbox' >> /etc/pacman.conf
+              sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf 2>/dev/null || true
+              # Per-arch tuning (use MATRIX_ARCH since uname -m may lie under QEMU)
+              case \"\$MATRIX_ARCH\" in
+                pentium4)
+                  printf '%s\n' 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' \
+                    'SigLevel = Never' > /etc/pacman.d/mirrorlist
+                  sed -i 's/^CFLAGS=.*/CFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
+                  sed -i 's/^CXXFLAGS=.*/CXXFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
+                  pacman-key --init 2>/dev/null || true
+                  pacman-key --populate archlinux32 2>/dev/null || true
+                  ;;
+                ppc64)
+                  printf '%s\n' '[extrappc-any]' 'SigLevel = Never' \
+                    'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/any' \
+                    '' '[extrappc]' 'SigLevel = Never' \
+                    'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/\$arch' \
+                    >> /etc/pacman.conf
+                  # Image has newer packages than repo; avoid downgrading C/C++ runtime
+                  PACMAN_IGNORE='--ignore glibc,libgcc,libstdc++,gcc-libs,libasan,liblsan,libubsan,libtsan,zlib,curl,libxml2,openssl,nettle'
+                  pacman-key --init 2>/dev/null || true
+                  pacman -S --noconfirm archpower-keyring 2>/dev/null || true
+                  ;;
+                *)
+                  pacman-key --init 2>/dev/null || true
+                  ;;
+              esac
               pacman -Sy --noconfirm 2>/dev/null || true
               pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
               pacman -Su --noconfirm 2>/dev/null || true
               pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
                 freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
                 pulseaudio pulseaudio-alsa xorg-server-xvfb'
-              if ! pacman -S --noconfirm \$pkgs 2>/dev/null; then
+              if ! pacman -S --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null; then
                 echo 'Normal install failed under QEMU, trying download+extract...'
-                pacman -Sw --noconfirm \$pkgs 2>/dev/null || true
+                pacman -Sw --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null || true
                 for pkg in /var/cache/pacman/pkg/*.pkg.tar.*; do
                   [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
                 done
               fi
-              wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
-                -O /usr/local/bin/quick-sharun 2>/dev/null || true
+              # Reinstall network tools to fix library mismatches from package changes
+              pacman -S --noconfirm \$PACMAN_IGNORE wget curl 2>/dev/null || true
+              # Download quick-sharun (try each method independently)
+              if command -v busybox >/dev/null 2>&1; then
+                busybox wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                  -O /usr/local/bin/quick-sharun 2>/dev/null || true
+              fi
+              if [ ! -s /usr/local/bin/quick-sharun ] && command -v curl >/dev/null 2>&1; then
+                curl -sLo /usr/local/bin/quick-sharun \
+                  'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' || true
+              fi
+              if [ ! -s /usr/local/bin/quick-sharun ] && command -v wget >/dev/null 2>&1; then
+                wget -q 'https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/main/useful-tools/quick-sharun.sh' \
+                  -O /usr/local/bin/quick-sharun || true
+              fi
               chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              echo Architecture: \$(uname -m)
               /bin/sh ./get-dependencies.sh
               /bin/sh ./make-appimage.sh
             "
@@ -92,7 +141,8 @@ jobs:
   release:
     if: ${{ github.ref_name == 'main' }}
     needs: [build]
-    permissions: write-all
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
