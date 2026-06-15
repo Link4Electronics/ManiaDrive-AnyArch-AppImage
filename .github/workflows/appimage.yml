@@ -109,9 +109,9 @@ jobs:
               # Add curl to main pkgs so it downgrades in the first transaction
               # alongside deps, avoiding a hung second transaction under QEMU.
               pkgs=\"\$pkgs curl\"
-              if ! pacman -S --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null; then
+              if ! pacman -S --noconfirm \$PACMAN_IGNORE \$pkgs; then
                 echo 'Normal install failed under QEMU, trying download+extract...'
-                pacman -Sw --noconfirm \$PACMAN_IGNORE \$pkgs 2>/dev/null || true
+                pacman -Sw --noconfirm \$PACMAN_IGNORE \$pkgs || true
                 for pkg in /var/cache/pacman/pkg/*.pkg.tar.*; do
                   [ -f \"\$pkg\" ] && tar --zstd -xf \"\$pkg\" -C / 2>/dev/null || tar -xf \"\$pkg\" -C / 2>/dev/null || true
                 done
