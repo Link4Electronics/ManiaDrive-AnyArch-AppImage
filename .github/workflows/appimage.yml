@@ -90,13 +90,13 @@ jobs:
                   # consistent transaction. Partial --ignore causes version mismatch
                   # that leads to segfaults under QEMU.
                   SKIP_UPGRADE=1
-                  pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
+                  pkgs='base-devel git jq patchelf strace wget zsync unzip 7zip \
                     freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
                     pulseaudio pulseaudio-alsa xorg-server-xvfb'
                   ;;
                 *)
                   pacman-key --init 2>/dev/null || true
-                  pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
+                  pkgs='base-devel git jq patchelf strace wget zsync unzip 7zip \
                     freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
                     pulseaudio pulseaudio-alsa xorg-server-xvfb'
                   ;;
