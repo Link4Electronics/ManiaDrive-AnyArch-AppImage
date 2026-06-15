@@ -44,10 +44,10 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Install QEMU for ppc64
+      - name: Install QEMU for ppc64 (big-endian)
         if: matrix.arch == 'ppc64'
         run: |
-          sudo apt update && sudo apt install -y qemu-user-static binfmt-support
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,14 +61,22 @@ jobs:
             ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
             ${{ matrix.entrypoint && format('--entrypoint {0}', matrix.entrypoint) || '' }} \
             ${{ matrix.image }} \
-            sh -c "
+            ${{ matrix.entrypoint && '-c' || 'sh -c' }} "
               pacman-key --init 2>/dev/null || true
               pacman -Sy --noconfirm 2>/dev/null || true
               pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
               pacman -Su --noconfirm 2>/dev/null || true
               # Disable pacman sandbox (Landlock unavailable under QEMU)
-              sed -i 's/^#DisableSandbox/DisableSandbox/' /etc/pacman.conf 2>/dev/null || true
+              if ! grep -q '^DisableSandbox' /etc/pacman.conf 2>/dev/null; then
+                echo 'DisableSandbox' >> /etc/pacman.conf
+              fi
               sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf 2>/dev/null || true
+              # Force fresh pentium4 mirror for old images
+              case "\$(uname -m)" in i686|pentium4)
+                echo 'Server = https://mirror.math.princeton.edu/pub/archlinux32/pentium4/\$repo' > /etc/pacman.d/mirrorlist
+                sed -i 's/^CFLAGS=.*/CFLAGS="-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt"/' /etc/makepkg.conf 2>/dev/null || true
+                sed -i 's/^CXXFLAGS=.*/CXXFLAGS="-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt"/' /etc/makepkg.conf 2>/dev/null || true
+              esac
               pkgs='base-devel git jq patchelf wget zsync unzip 7zip \
                 freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
                 pulseaudio pulseaudio-alsa xorg-server-xvfb'
