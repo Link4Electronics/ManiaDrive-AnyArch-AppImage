@@ -46,22 +46,27 @@ jobs:
           #  image: jonathonf/archlinux32:pentium4
     steps:
       - name: Set up QEMU
-        if: matrix.cross != true
         uses: docker/setup-qemu-action@v3
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract cross sysroot
+      - name: Prepare cross sysroot
         if: matrix.cross == true
         run: |
           SYSDIR=/tmp/${{ matrix.arch }}-sysroot
-          docker create --name cross-root \
-            ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
-            ${{ matrix.image }} /bin/true
+          DOCKER_OPTS="${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }}"
+          # shellcheck disable=SC2086
+          docker run -d $DOCKER_OPTS --name cross-root ${{ matrix.image }} cat
+          # Install packages if sysroot-packages.txt exists in the repo
+          if [ -f sysroot-packages.txt ]; then
+            docker exec cross-root pacman -Sy --noconfirm archlinux-keyring 2>/dev/null || true
+            docker exec cross-root pacman -S --noconfirm $(cat sysroot-packages.txt) || true
+          fi
           mkdir -p "$SYSDIR"
+          docker kill cross-root >/dev/null 2>&1 || true
           docker export cross-root | tar -C "$SYSDIR" -xf -
-          docker rm cross-root
+          docker rm -f cross-root
 
       - name: Download cross toolchain
         if: matrix.cross == true && matrix.arch != 'aarch64'
@@ -224,15 +229,15 @@ jobs:
               TOOL_REPO='https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools'
               for tool in quick-sharun get-debloated-pkgs make-aur-package; do
                 if command -v busybox >/dev/null 2>&1; then
-                  busybox wget -q "$TOOL_REPO/$tool.sh" -O "/usr/local/bin/$tool" 2>/dev/null || true
+                  busybox wget -q \"\$TOOL_REPO/\$tool.sh\" -O \"/usr/local/bin/\$tool\" 2>/dev/null || true
                 fi
-                if [ ! -s "/usr/local/bin/$tool" ] && command -v curl >/dev/null 2>&1; then
-                  curl -sLo "/usr/local/bin/$tool" "$TOOL_REPO/$tool.sh" || true
+                if [ ! -s \"/usr/local/bin/\$tool\" ] && command -v curl >/dev/null 2>&1; then
+                  curl -sLo \"/usr/local/bin/\$tool\" \"\$TOOL_REPO/\$tool.sh\" || true
                 fi
-                if [ ! -s "/usr/local/bin/$tool" ] && command -v wget >/dev/null 2>&1; then
-                  wget -q "$TOOL_REPO/$tool.sh" -O "/usr/local/bin/$tool" || true
+                if [ ! -s \"/usr/local/bin/\$tool\" ] && command -v wget >/dev/null 2>&1; then
+                  wget -q \"\$TOOL_REPO/\$tool.sh\" -O \"/usr/local/bin/\$tool\" || true
                 fi
-                chmod +x "/usr/local/bin/$tool" 2>/dev/null || true
+                chmod +x \"/usr/local/bin/\$tool\" 2>/dev/null || true
               done
               echo Architecture: \$(uname -m)
               /bin/sh ./get-dependencies.sh
@@ -292,8 +297,8 @@ jobs:
               echo \"Using CXX=\$CXX\"
               TOOL_REPO='https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools'
               for tool in quick-sharun get-debloated-pkgs make-aur-package; do
-                curl -sLo "/usr/local/bin/$tool" "$TOOL_REPO/$tool.sh" || true
-                chmod +x "/usr/local/bin/$tool" 2>/dev/null || true
+                curl -sLo \"/usr/local/bin/\$tool\" \"\$TOOL_REPO/\$tool.sh\" || true
+                chmod +x \"/usr/local/bin/\$tool\" 2>/dev/null || true
               done
               echo \"Architecture: \$MATRIX_ARCH (cross-compiled)\"
               /bin/sh ./get-dependencies.sh
