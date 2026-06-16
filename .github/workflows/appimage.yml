@@ -19,7 +19,7 @@ jobs:
           - aarch64
           - arm32v7
           - ppc64
-          #- ppc64le
+          - ppc64le
           #- pentium4
         include:
           - arch: x86_64
@@ -35,24 +35,96 @@ jobs:
             platform: linux/ppc64
             image: kth5/archpower:latest-ppc64
             entrypoint: /bin/sh
-          #- arch: ppc64le
-          #  platform: linux/ppc64le
-          #  image: kth5/archpower:latest-ppc64le
+            cross: true
+          - arch: ppc64le
+            platform: linux/ppc64le
+            image: kth5/archpower:latest-ppc64le
+            cross: true
           #- arch: pentium4
           #  image: jonathonf/archlinux32:pentium4
     steps:
       - name: Set up QEMU
+        if: matrix.arch != 'ppc64' && matrix.arch != 'ppc64le'
         uses: docker/setup-qemu-action@v3
-
-      - name: Register QEMU binfmt (ppc64 only)
-        if: matrix.arch == 'ppc64'
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build in container
+      - name: Extract cross sysroot
+        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        run: |
+          SYSDIR=/tmp/${{ matrix.arch }}-sysroot
+          docker create --name cross-root ${{ matrix.image }}
+          mkdir -p "$SYSDIR"
+          docker export cross-root | tar -C "$SYSDIR" -xf -
+          docker rm cross-root
+
+      - name: Download cross binutils
+        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        run: |
+          case "${{ matrix.arch }}" in
+            ppc64)
+              BOOTLIN_ARCH=powerpc64-power8
+              BIN_PREFIX=powerpc64-linux
+              ;;
+            ppc64le)
+              BOOTLIN_ARCH=powerpc64le-power8
+              BIN_PREFIX=powerpc64le-linux
+              ;;
+          esac
+          BINDIR=/tmp/${{ matrix.arch }}-bin
+          mkdir -p "$BINDIR"
+          curl -sL "https://toolchains.bootlin.com/downloads/releases/toolchains/${BOOTLIN_ARCH}/tarballs/${BOOTLIN_ARCH}--glibc--bleeding-edge-2025.08-1.tar.xz" \
+            | tar -xJ --strip-components=2 -C "$BINDIR" "*/bin/${BIN_PREFIX}-*"
+          chmod +x "$BINDIR/${BIN_PREFIX}-"*
+
+      - name: Create cross-compiler wrappers
+        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        run: |
+          mkdir -p /tmp/cross-wrappers
+          case "${{ matrix.arch }}" in
+            ppc64)
+              cat > /tmp/cross-wrappers/powerpc64-linux-gnu-gcc << 'WCEOF'
+#!/bin/sh
+exec clang --target=powerpc64-linux-gnu -mabi=elfv2 \
+  --sysroot=/sysroot \
+  --ld-path=/cross-bin/powerpc64-linux-ld \
+  -B /cross-bin \
+  "$@"
+WCEOF
+              cat > /tmp/cross-wrappers/powerpc64-linux-gnu-g++ << 'WCEOF'
+#!/bin/sh
+exec clang++ --target=powerpc64-linux-gnu -mabi=elfv2 \
+  --sysroot=/sysroot \
+  --ld-path=/cross-bin/powerpc64-linux-ld \
+  -B /cross-bin \
+  "$@"
+WCEOF
+              chmod +x /tmp/cross-wrappers/powerpc64-linux-gnu-g*
+              ;;
+            ppc64le)
+              cat > /tmp/cross-wrappers/powerpc64le-linux-gnu-gcc << 'WCEOF'
+#!/bin/sh
+exec clang --target=powerpc64le-linux-gnu \
+  --sysroot=/sysroot \
+  --ld-path=/cross-bin/powerpc64le-linux-ld \
+  -B /cross-bin \
+  "$@"
+WCEOF
+              cat > /tmp/cross-wrappers/powerpc64le-linux-gnu-g++ << 'WCEOF'
+#!/bin/sh
+exec clang++ --target=powerpc64le-linux-gnu \
+  --sysroot=/sysroot \
+  --ld-path=/cross-bin/powerpc64le-linux-ld \
+  -B /cross-bin \
+  "$@"
+WCEOF
+              chmod +x /tmp/cross-wrappers/powerpc64le-linux-gnu-g*
+              ;;
+          esac
+
+      - name: Build in container (QEMU)
+        if: matrix.arch != 'ppc64' && matrix.arch != 'ppc64le'
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
@@ -76,23 +148,6 @@ jobs:
                   sed -i 's/^CXXFLAGS=.*/CXXFLAGS=\"-march=pentium4 -mtune=pentium4 -O2 -pipe -fstack-protector-strong -fno-plt\"/' /etc/makepkg.conf 2>/dev/null || true
                   pacman-key --init 2>/dev/null || true
                   pacman-key --populate archlinux32 2>/dev/null || true
-                  ;;
-                ppc64)
-                  printf '%s\n' '[extrappc-any]' 'SigLevel = Never' \
-                    'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/any' \
-                    '' '[extrappc]' 'SigLevel = Never' \
-                    'Server = https://raw.githubusercontent.com/Link4Electronics/archpower-packages/main/extrappc/\$arch' \
-                    >> /etc/pacman.conf
-                  pacman-key --init 2>/dev/null || true
-                  pacman -S --noconfirm archpower-keyring 2>/dev/null || true
-                  pacman -Sy --noconfirm 2>/dev/null || true
-                  # Accept repo versions (downgrade from image's newer pkgs) in one
-                  # consistent transaction. Partial --ignore causes version mismatch
-                  # that leads to segfaults under QEMU.
-                  SKIP_UPGRADE=1
-                  pkgs='base-devel git jq patchelf strace wget zsync unzip 7zip \
-                    freetype2 libx11 libxrandr libxss nspr nss nss-mdns \
-                    pulseaudio pulseaudio-alsa xorg-server-xvfb'
                   ;;
                 *)
                   pacman-key --init 2>/dev/null || true
@@ -135,6 +190,54 @@ jobs:
               fi
               chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
               echo Architecture: \$(uname -m)
+              /bin/sh ./get-dependencies.sh
+              /bin/sh ./make-appimage.sh
+            "
+
+      - name: Build in container (cross-compile)
+        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "/tmp/${{ matrix.arch }}-sysroot:/sysroot:ro" \
+            -v "/tmp/${{ matrix.arch }}-bin:/cross-bin:ro" \
+            -v "/tmp/cross-wrappers:/wrappers:ro" \
+            -w /workspace \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            -e MATRIX_ARCH="${{ matrix.arch }}" \
+            archlinux:latest sh -c "
+              pacman -Sy --noconfirm 2>/dev/null || true
+              pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
+              pacman -Su --noconfirm 2>/dev/null || true
+              pacman -S --noconfirm clang
+              # Symlink Bootlin tools to match clang's triple lookup
+              case \"\$MATRIX_ARCH\" in
+                ppc64)
+                  for tool in /cross-bin/powerpc64-linux-*; do
+                    base=\$(basename \"\$tool\")
+                    newname=\$(echo \"\$base\" | sed 's/-linux-/-linux-gnu-/')
+                    ln -sf \"\$tool\" \"/usr/local/bin/\$newname\"
+                  done
+                  export CC=powerpc64-linux-gnu-gcc
+                  export CXX=powerpc64-linux-gnu-g++
+                  ;;
+                ppc64le)
+                  for tool in /cross-bin/powerpc64le-linux-*; do
+                    base=\$(basename \"\$tool\")
+                    newname=\$(echo \"\$base\" | sed 's/-linux-/-linux-gnu-/')
+                    ln -sf \"\$tool\" \"/usr/local/bin/\$newname\"
+                  done
+                  export CC=powerpc64le-linux-gnu-gcc
+                  export CXX=powerpc64le-linux-gnu-g++
+                  ;;
+              esac
+              export PATH=\"/wrappers:\$PATH\"
+              echo \"Using CC=\$CC\"
+              echo \"Using CXX=\$CXX\"
+              curl -sLo /usr/local/bin/quick-sharun \
+                'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' || true
+              chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              echo \"Architecture: \$MATRIX_ARCH (cross-compiled)\"
               /bin/sh ./get-dependencies.sh
               /bin/sh ./make-appimage.sh
             "
