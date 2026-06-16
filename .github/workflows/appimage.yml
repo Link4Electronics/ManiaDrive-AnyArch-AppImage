@@ -84,41 +84,41 @@ jobs:
           mkdir -p /tmp/cross-wrappers
           case "${{ matrix.arch }}" in
             ppc64)
-              cat > /tmp/cross-wrappers/powerpc64-linux-gnu-gcc << 'WCEOF'
-#!/bin/sh
-exec clang --target=powerpc64-linux-gnu -mabi=elfv2 \
-  --sysroot=/sysroot \
-  --ld-path=/cross-bin/powerpc64-linux-ld \
-  -B /cross-bin \
-  "$@"
-WCEOF
-              cat > /tmp/cross-wrappers/powerpc64-linux-gnu-g++ << 'WCEOF'
-#!/bin/sh
-exec clang++ --target=powerpc64-linux-gnu -mabi=elfv2 \
-  --sysroot=/sysroot \
-  --ld-path=/cross-bin/powerpc64-linux-ld \
-  -B /cross-bin \
-  "$@"
-WCEOF
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang --target=powerpc64-linux-gnu -mabi=elfv2 \'
+                echo '  --sysroot=/sysroot \'
+                echo '  --ld-path=/cross-bin/powerpc64-linux-ld \'
+                echo '  -B /cross-bin \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/powerpc64-linux-gnu-gcc
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang++ --target=powerpc64-linux-gnu -mabi=elfv2 \'
+                echo '  --sysroot=/sysroot \'
+                echo '  --ld-path=/cross-bin/powerpc64-linux-ld \'
+                echo '  -B /cross-bin \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/powerpc64-linux-gnu-g++
               chmod +x /tmp/cross-wrappers/powerpc64-linux-gnu-g*
               ;;
             ppc64le)
-              cat > /tmp/cross-wrappers/powerpc64le-linux-gnu-gcc << 'WCEOF'
-#!/bin/sh
-exec clang --target=powerpc64le-linux-gnu \
-  --sysroot=/sysroot \
-  --ld-path=/cross-bin/powerpc64le-linux-ld \
-  -B /cross-bin \
-  "$@"
-WCEOF
-              cat > /tmp/cross-wrappers/powerpc64le-linux-gnu-g++ << 'WCEOF'
-#!/bin/sh
-exec clang++ --target=powerpc64le-linux-gnu \
-  --sysroot=/sysroot \
-  --ld-path=/cross-bin/powerpc64le-linux-ld \
-  -B /cross-bin \
-  "$@"
-WCEOF
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang --target=powerpc64le-linux-gnu \'
+                echo '  --sysroot=/sysroot \'
+                echo '  --ld-path=/cross-bin/powerpc64le-linux-ld \'
+                echo '  -B /cross-bin \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/powerpc64le-linux-gnu-gcc
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang++ --target=powerpc64le-linux-gnu \'
+                echo '  --sysroot=/sysroot \'
+                echo '  --ld-path=/cross-bin/powerpc64le-linux-ld \'
+                echo '  -B /cross-bin \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/powerpc64le-linux-gnu-g++
               chmod +x /tmp/cross-wrappers/powerpc64le-linux-gnu-g*
               ;;
           esac
