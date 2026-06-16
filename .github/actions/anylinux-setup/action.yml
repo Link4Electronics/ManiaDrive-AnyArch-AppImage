@@ -1,0 +1,60 @@
+name: "AnyLinux Tools Setup"
+description: "Downloads and installs Anylinux packaging tools and dependencies"
+inputs:
+  packages:
+    description: "Packages to install with pacman"
+    required: false
+    default: "7zip base-devel freetype2 git jq libx11 libxrandr libxss nspr nss nss-mdns nss-myhostname patchelf pulseaudio pulseaudio-alsa unzip wget xorg-server-xvfb zsync"
+  skip-pacman-init:
+    description: "Skip pacman key initialization and system upgrade"
+    required: false
+    default: "false"
+runs:
+  using: "composite"
+  steps:
+    - name: Execute Setup Script
+      shell: sh
+      run: |
+        set -e
+
+        if [ "${{ inputs.skip-pacman-init }}" != "true" ]; then
+          pacman-key --init 2>/dev/null || true
+          pacman -Sy --noconfirm 2>/dev/null || true
+          pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
+          pacman -Su --noconfirm 2>/dev/null || true
+        fi
+
+        pkgs="${{ inputs.packages }}"
+        if ! pacman -S --noconfirm $pkgs; then
+          echo 'Normal install failed, trying download+extract...'
+          pacman -Sw --noconfirm $pkgs || true
+          for pkg in /var/cache/pacman/pkg/*.pkg.tar.*; do
+            [ -f "$pkg" ] && tar --zstd -xf "$pkg" -C / 2>/dev/null || tar -xf "$pkg" -C / 2>/dev/null || true
+          done
+          ldconfig 2>/dev/null || true
+        fi
+
+        ANYLINUX_TOOLS_DIR=${ANYLINUX_TOOLS_DIR:-/usr/local/bin}
+        TOOL_REPO=${TOOL_REPO:-https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main}
+        QUICK_SHARUN=${QUICK_SHARUN:-$TOOL_REPO/useful-tools/quick-sharun.sh}
+        DEBLOATED_PACKAGES=${DEBLOATED_PACKAGES:-$TOOL_REPO/useful-tools/get-debloated-pkgs.sh}
+        MAKE_AUR_PACKAGE=${MAKE_AUR_PACKAGE:-$TOOL_REPO/useful-tools/make-aur-package.sh}
+
+        _get_tool() {
+          url="$1"
+          dest="$2"
+          if command -v curl >/dev/null 2>&1; then
+            curl -sLo "$dest" "$url" || true
+          elif command -v wget >/dev/null 2>&1; then
+            wget -q "$url" -O "$dest" || true
+          elif command -v busybox >/dev/null 2>&1; then
+            busybox wget -q "$url" -O "$dest" || true
+          fi
+          if [ -s "$dest" ]; then
+            chmod +x "$dest"
+          fi
+        }
+
+        _get_tool "$QUICK_SHARUN" "$ANYLINUX_TOOLS_DIR/quick-sharun"
+        _get_tool "$DEBLOATED_PACKAGES" "$ANYLINUX_TOOLS_DIR/get-debloated-pkgs"
+        _get_tool "$MAKE_AUR_PACKAGE" "$ANYLINUX_TOOLS_DIR/make-aur-package"
