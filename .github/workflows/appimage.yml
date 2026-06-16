@@ -79,7 +79,7 @@ jobs:
           BINDIR=/tmp/${{ matrix.arch }}-bin
           mkdir -p "$BINDIR"
           curl -sL "https://toolchains.bootlin.com/downloads/releases/toolchains/${BOOTLIN_ARCH}/tarballs/${BOOTLIN_ARCH}--glibc--bleeding-edge-2025.08-1.tar.xz" \
-            | tar -xJ --strip-components=2 -C "$BINDIR" "*/bin/${BIN_PREFIX}-*"
+            | tar -xJ --strip-components=2 --wildcards -C "$BINDIR" "*/bin/${BIN_PREFIX}-*"
           chmod +x "$BINDIR/${BIN_PREFIX}-"*
 
       - name: Create cross-compiler wrappers
