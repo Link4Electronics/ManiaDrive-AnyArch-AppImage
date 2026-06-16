@@ -117,6 +117,9 @@ jobs:
                 done
                 ldconfig 2>/dev/null || true
               fi
+              # Ensure nettle/wget/curl are consistent (QEMU DB workaround)
+              pacman -S --noconfirm nettle wget curl 2>/dev/null || true
+              ldconfig 2>/dev/null || true
               # Download quick-sharun (try each method independently)
               if command -v busybox >/dev/null 2>&1; then
                 busybox wget -q 'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' \
