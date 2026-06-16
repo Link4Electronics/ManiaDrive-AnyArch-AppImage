@@ -96,16 +96,12 @@ jobs:
                 echo '#!/bin/sh'
                 echo 'exec clang --target=powerpc64-linux-gnu -mabi=elfv2 \'
                 echo '  --sysroot=/sysroot \'
-                echo '  --ld-path=/cross-bin/powerpc64-linux-ld \'
-                echo '  -B /cross-bin \'
                 echo '  "$@"'
               } > /tmp/cross-wrappers/powerpc64-linux-gnu-gcc
               {
                 echo '#!/bin/sh'
                 echo 'exec clang++ --target=powerpc64-linux-gnu -mabi=elfv2 \'
                 echo '  --sysroot=/sysroot \'
-                echo '  --ld-path=/cross-bin/powerpc64-linux-ld \'
-                echo '  -B /cross-bin \'
                 echo '  "$@"'
               } > /tmp/cross-wrappers/powerpc64-linux-gnu-g++
               chmod +x /tmp/cross-wrappers/powerpc64-linux-gnu-g*
@@ -115,16 +111,12 @@ jobs:
                 echo '#!/bin/sh'
                 echo 'exec clang --target=powerpc64le-linux-gnu \'
                 echo '  --sysroot=/sysroot \'
-                echo '  --ld-path=/cross-bin/powerpc64le-linux-ld \'
-                echo '  -B /cross-bin \'
                 echo '  "$@"'
               } > /tmp/cross-wrappers/powerpc64le-linux-gnu-gcc
               {
                 echo '#!/bin/sh'
                 echo 'exec clang++ --target=powerpc64le-linux-gnu \'
                 echo '  --sysroot=/sysroot \'
-                echo '  --ld-path=/cross-bin/powerpc64le-linux-ld \'
-                echo '  -B /cross-bin \'
                 echo '  "$@"'
               } > /tmp/cross-wrappers/powerpc64le-linux-gnu-g++
               chmod +x /tmp/cross-wrappers/powerpc64le-linux-gnu-g*
@@ -161,7 +153,7 @@ jobs:
               ;;
           esac
 
-      - name: Build in container (native/QEMU)
+      - name: Build in container
         if: matrix.cross != true
         run: |
           docker run --rm \
