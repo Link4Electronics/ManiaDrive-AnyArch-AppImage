@@ -75,10 +75,10 @@ jobs:
               BOOTLIN_ARCH=powerpc64le-power8
               BIN_PREFIX=powerpc64le-linux
               ;;
-            arm32v7)
-              BOOTLIN_ARCH=armv7-eabihf
-              BIN_PREFIX=arm-linux-gnueabihf
-              ;;
+             arm32v7)
+               BOOTLIN_ARCH=armv7-eabihf
+               BIN_PREFIX=arm-buildroot-linux-gnueabihf
+               ;;
           esac
           BINDIR=/tmp/${{ matrix.arch }}-bin
           mkdir -p "$BINDIR"
@@ -251,8 +251,10 @@ jobs:
                   export CXX=aarch64-linux-gnu-g++
                   ;;
                 arm32v7)
-                  for tool in /cross-bin/arm-linux-gnueabihf-*; do
-                    ln -sf \"\$tool\" \"/usr/local/bin/\$(basename \"\$tool\")\"
+                  for tool in /cross-bin/arm-buildroot-linux-gnueabihf-*; do
+                    base=\$(basename \"\$tool\")
+                    newname=\$(echo \"\$base\" | sed 's/buildroot-//')
+                    ln -sf \"\$tool\" \"/usr/local/bin/\$newname\"
                   done
                   export CC=arm-linux-gnueabihf-gcc
                   export CXX=arm-linux-gnueabihf-g++
