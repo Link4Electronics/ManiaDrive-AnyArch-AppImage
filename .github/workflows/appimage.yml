@@ -63,28 +63,43 @@ jobs:
           docker export cross-root | tar -C "$SYSDIR" -xf -
           docker rm cross-root
 
-      - name: Download cross binutils
+      - name: Download cross toolchain
         if: matrix.cross == true && matrix.arch != 'aarch64'
         run: |
           case "${{ matrix.arch }}" in
             ppc64)
               BOOTLIN_ARCH=powerpc64-power8
-              BIN_PREFIX=powerpc64-linux
+              BOOTLIN_TARGET=powerpc64-buildroot-linux-gnu
+              CLANG_TARGET=powerpc64-linux-gnu
               ;;
             ppc64le)
               BOOTLIN_ARCH=powerpc64le-power8
-              BIN_PREFIX=powerpc64le-linux
+              BOOTLIN_TARGET=powerpc64le-buildroot-linux-gnu
+              CLANG_TARGET=powerpc64le-linux-gnu
               ;;
-             arm32v7)
-               BOOTLIN_ARCH=armv7-eabihf
-               BIN_PREFIX=arm-buildroot-linux-gnueabihf
-               ;;
+            arm32v7)
+              BOOTLIN_ARCH=armv7-eabihf
+              BOOTLIN_TARGET=arm-buildroot-linux-gnueabihf
+              CLANG_TARGET=arm-linux-gnueabihf
+              ;;
           esac
+          TOOLDIR=$(mktemp -d)
           BINDIR=/tmp/${{ matrix.arch }}-bin
+          SYSDIR=/tmp/${{ matrix.arch }}-sysroot
           mkdir -p "$BINDIR"
           curl -sL "https://toolchains.bootlin.com/downloads/releases/toolchains/${BOOTLIN_ARCH}/tarballs/${BOOTLIN_ARCH}--glibc--bleeding-edge-2025.08-1.tar.xz" \
-            | tar -xJ --strip-components=2 --wildcards -C "$BINDIR" "*/bin/${BIN_PREFIX}-*"
-          find "$BINDIR" -maxdepth 1 -type f -exec chmod +x {} +
+            | tar -xJ --strip-components=1 -C "$TOOLDIR"
+          for tool in "$TOOLDIR/bin/${BOOTLIN_TARGET}-"*; do
+            [ -f "$tool" ] || continue
+            base=$(basename "$tool")
+            newname=$(echo "$base" | sed 's/buildroot-//')
+            cp -L "$tool" "$BINDIR/$newname"
+          done
+          mkdir -p "$SYSDIR/usr/lib/gcc/$CLANG_TARGET/15.1.0"
+          cp "$TOOLDIR/lib/gcc/$BOOTLIN_TARGET/15.1.0/crt"*.o "$SYSDIR/usr/lib/gcc/$CLANG_TARGET/15.1.0/" 2>/dev/null || true
+          cp "$TOOLDIR/lib/gcc/$BOOTLIN_TARGET/15.1.0/libgcc"* "$SYSDIR/usr/lib/gcc/$CLANG_TARGET/15.1.0/" 2>/dev/null || true
+          cp -r "$TOOLDIR/$BOOTLIN_TARGET/lib/libgcc_s"* "$SYSDIR/usr/lib/" 2>/dev/null || true
+          rm -rf "$TOOLDIR"
 
       - name: Create cross-compiler wrappers
         if: matrix.cross == true
@@ -205,20 +220,20 @@ jobs:
               # Ensure nettle/wget/curl are consistent (QEMU DB workaround)
               pacman -S --noconfirm nettle wget curl 2>/dev/null || true
               ldconfig 2>/dev/null || true
-              # Download quick-sharun (try each method independently)
-              if command -v busybox >/dev/null 2>&1; then
-                busybox wget -q 'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' \
-                  -O /usr/local/bin/quick-sharun 2>/dev/null || true
-              fi
-              if [ ! -s /usr/local/bin/quick-sharun ] && command -v curl >/dev/null 2>&1; then
-                curl -sLo /usr/local/bin/quick-sharun \
-                  'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' || true
-              fi
-              if [ ! -s /usr/local/bin/quick-sharun ] && command -v wget >/dev/null 2>&1; then
-                wget -q 'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' \
-                  -O /usr/local/bin/quick-sharun || true
-              fi
-              chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              # Download AnyLinux tools (try each method independently)
+              TOOL_REPO='https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools'
+              for tool in quick-sharun get-debloated-pkgs make-aur-package; do
+                if command -v busybox >/dev/null 2>&1; then
+                  busybox wget -q "$TOOL_REPO/$tool.sh" -O "/usr/local/bin/$tool" 2>/dev/null || true
+                fi
+                if [ ! -s "/usr/local/bin/$tool" ] && command -v curl >/dev/null 2>&1; then
+                  curl -sLo "/usr/local/bin/$tool" "$TOOL_REPO/$tool.sh" || true
+                fi
+                if [ ! -s "/usr/local/bin/$tool" ] && command -v wget >/dev/null 2>&1; then
+                  wget -q "$TOOL_REPO/$tool.sh" -O "/usr/local/bin/$tool" || true
+                fi
+                chmod +x "/usr/local/bin/$tool" 2>/dev/null || true
+              done
               echo Architecture: \$(uname -m)
               /bin/sh ./get-dependencies.sh
               /bin/sh ./make-appimage.sh
@@ -251,28 +266,22 @@ jobs:
                   export CXX=aarch64-linux-gnu-g++
                   ;;
                 arm32v7)
-                  for tool in /cross-bin/arm-buildroot-linux-gnueabihf-*; do
-                    base=\$(basename \"\$tool\")
-                    newname=\$(echo \"\$base\" | sed 's/buildroot-//')
-                    ln -sf \"\$tool\" \"/usr/local/bin/\$newname\"
+                  for tool in /cross-bin/arm-linux-gnueabihf-*; do
+                    ln -sf \"\$tool\" \"/usr/local/bin/\$(basename \"\$tool\")\"
                   done
                   export CC=arm-linux-gnueabihf-gcc
                   export CXX=arm-linux-gnueabihf-g++
                   ;;
                 ppc64)
-                  for tool in /cross-bin/powerpc64-linux-*; do
-                    base=\$(basename \"\$tool\")
-                    newname=\$(echo \"\$base\" | sed 's/-linux-/-linux-gnu-/')
-                    ln -sf \"\$tool\" \"/usr/local/bin/\$newname\"
+                  for tool in /cross-bin/powerpc64-linux-gnu-*; do
+                    ln -sf \"\$tool\" \"/usr/local/bin/\$(basename \"\$tool\")\"
                   done
                   export CC=powerpc64-linux-gnu-gcc
                   export CXX=powerpc64-linux-gnu-g++
                   ;;
                 ppc64le)
-                  for tool in /cross-bin/powerpc64le-linux-*; do
-                    base=\$(basename \"\$tool\")
-                    newname=\$(echo \"\$base\" | sed 's/-linux-/-linux-gnu-/')
-                    ln -sf \"\$tool\" \"/usr/local/bin/\$newname\"
+                  for tool in /cross-bin/powerpc64le-linux-gnu-*; do
+                    ln -sf \"\$tool\" \"/usr/local/bin/\$(basename \"\$tool\")\"
                   done
                   export CC=powerpc64le-linux-gnu-gcc
                   export CXX=powerpc64le-linux-gnu-g++
@@ -281,9 +290,11 @@ jobs:
               export PATH=\"/wrappers:\$PATH\"
               echo \"Using CC=\$CC\"
               echo \"Using CXX=\$CXX\"
-              curl -sLo /usr/local/bin/quick-sharun \
-                'https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools/quick-sharun.sh' || true
-              chmod +x /usr/local/bin/quick-sharun 2>/dev/null || true
+              TOOL_REPO='https://raw.githubusercontent.com/Link4Electronics/AnyArch-AppImages/main/useful-tools'
+              for tool in quick-sharun get-debloated-pkgs make-aur-package; do
+                curl -sLo "/usr/local/bin/$tool" "$TOOL_REPO/$tool.sh" || true
+                chmod +x "/usr/local/bin/$tool" 2>/dev/null || true
+              done
               echo \"Architecture: \$MATRIX_ARCH (cross-compiled)\"
               /bin/sh ./get-dependencies.sh
               /bin/sh ./make-appimage.sh
