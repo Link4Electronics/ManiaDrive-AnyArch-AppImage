@@ -25,16 +25,18 @@ jobs:
           - arch: x86_64
             platform: linux/amd64
             image: ghcr.io/pkgforge-dev/archlinux:latest
+            native: true
           - arch: aarch64
             platform: linux/arm64
             image: danhunsaker/archlinuxarm:latest
+            cross: true
           - arch: arm32v7
             platform: linux/arm/v7
             image: danhunsaker/archlinuxarm:latest
+            cross: true
           - arch: ppc64
             platform: linux/ppc64
             image: kth5/archpower:latest-ppc64
-            entrypoint: /bin/sh
             cross: true
           - arch: ppc64le
             platform: linux/ppc64le
@@ -44,17 +46,19 @@ jobs:
           #  image: jonathonf/archlinux32:pentium4
     steps:
       - name: Set up QEMU
-        if: matrix.arch != 'ppc64' && matrix.arch != 'ppc64le'
+        if: matrix.cross != 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Extract cross sysroot
-        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        if: matrix.cross == 'true'
         run: |
           SYSDIR=/tmp/${{ matrix.arch }}-sysroot
-          docker create --name cross-root ${{ matrix.image }}
+          docker create --name cross-root \
+            ${{ matrix.platform && format('--platform {0}', matrix.platform) || '' }} \
+            ${{ matrix.image }} /bin/true
           mkdir -p "$SYSDIR"
           docker export cross-root | tar -C "$SYSDIR" -xf -
           docker rm cross-root
@@ -79,7 +83,7 @@ jobs:
           chmod +x "$BINDIR/${BIN_PREFIX}-"*
 
       - name: Create cross-compiler wrappers
-        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        if: matrix.cross == 'true'
         run: |
           mkdir -p /tmp/cross-wrappers
           case "${{ matrix.arch }}" in
@@ -121,10 +125,40 @@ jobs:
               } > /tmp/cross-wrappers/powerpc64le-linux-gnu-g++
               chmod +x /tmp/cross-wrappers/powerpc64le-linux-gnu-g*
               ;;
+            aarch64)
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang --target=aarch64-linux-gnu \'
+                echo '  --sysroot=/sysroot \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/aarch64-linux-gnu-gcc
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang++ --target=aarch64-linux-gnu \'
+                echo '  --sysroot=/sysroot \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/aarch64-linux-gnu-g++
+              chmod +x /tmp/cross-wrappers/aarch64-linux-gnu-g*
+              ;;
+            arm32v7)
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang --target=arm-linux-gnueabihf \'
+                echo '  --sysroot=/sysroot \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/arm-linux-gnueabihf-gcc
+              {
+                echo '#!/bin/sh'
+                echo 'exec clang++ --target=arm-linux-gnueabihf \'
+                echo '  --sysroot=/sysroot \'
+                echo '  "$@"'
+              } > /tmp/cross-wrappers/arm-linux-gnueabihf-g++
+              chmod +x /tmp/cross-wrappers/arm-linux-gnueabihf-g*
+              ;;
           esac
 
-      - name: Build in container (QEMU)
-        if: matrix.arch != 'ppc64' && matrix.arch != 'ppc64le'
+      - name: Build in container (native/QEMU)
+        if: matrix.cross != 'true'
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
@@ -195,12 +229,16 @@ jobs:
             "
 
       - name: Build in container (cross-compile)
-        if: matrix.arch == 'ppc64' || matrix.arch == 'ppc64le'
+        if: matrix.cross == 'true'
         run: |
+          CROSS_BIN=""
+          case "${{ matrix.arch }}" in
+            ppc64|ppc64le) CROSS_BIN="-v /tmp/${{ matrix.arch }}-bin:/cross-bin:ro";;
+          esac
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "/tmp/${{ matrix.arch }}-sysroot:/sysroot:ro" \
-            -v "/tmp/${{ matrix.arch }}-bin:/cross-bin:ro" \
+            $CROSS_BIN \
             -v "/tmp/cross-wrappers:/wrappers:ro" \
             -w /workspace \
             -e GITHUB_REPOSITORY="${{ github.repository }}" \
@@ -210,8 +248,17 @@ jobs:
               pacman -S --noconfirm archlinux-keyring 2>/dev/null || true
               pacman -Su --noconfirm 2>/dev/null || true
               pacman -S --noconfirm clang
-              # Symlink Bootlin tools to match clang's triple lookup
               case \"\$MATRIX_ARCH\" in
+                aarch64)
+                  pacman -S --noconfirm aarch64-linux-gnu-binutils
+                  export CC=aarch64-linux-gnu-gcc
+                  export CXX=aarch64-linux-gnu-g++
+                  ;;
+                arm32v7)
+                  pacman -S --noconfirm arm-linux-gnueabihf-binutils
+                  export CC=arm-linux-gnueabihf-gcc
+                  export CXX=arm-linux-gnueabihf-g++
+                  ;;
                 ppc64)
                   for tool in /cross-bin/powerpc64-linux-*; do
                     base=\$(basename \"\$tool\")
